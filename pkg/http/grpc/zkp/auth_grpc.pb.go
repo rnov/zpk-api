@@ -18,7 +18,7 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// AuthClient is the client API for Auth service.
+// AuthClient is the client API for Auth app.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthClient interface {
@@ -62,7 +62,7 @@ func (c *authClient) VerifyAuthentication(ctx context.Context, in *Authenticatio
 	return out, nil
 }
 
-// AuthServer is the server API for Auth service.
+// AuthServer is the server API for Auth app.
 // All implementations must embed UnimplementedAuthServer
 // for forward compatibility
 type AuthServer interface {
@@ -87,7 +87,7 @@ func (UnimplementedAuthServer) VerifyAuthentication(context.Context, *Authentica
 }
 func (UnimplementedAuthServer) mustEmbedUnimplementedAuthServer() {}
 
-// UnsafeAuthServer may be embedded to opt out of forward compatibility for this service.
+// UnsafeAuthServer may be embedded to opt out of forward compatibility for this app.
 // Use of this interface is not recommended, as added methods to AuthServer will
 // result in compilation errors.
 type UnsafeAuthServer interface {
@@ -152,7 +152,7 @@ func _Auth_VerifyAuthentication_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-// Auth_ServiceDesc is the grpc.ServiceDesc for Auth service.
+// Auth_ServiceDesc is the grpc.ServiceDesc for Auth app.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Auth_ServiceDesc = grpc.ServiceDesc{

@@ -1,20 +1,31 @@
 package main
 
 import (
+	"log"
 	"zkp-api/internal/config"
-	"zkp-api/pkg/verifier"
+	"zkp-api/pkg/app/verifier/handler"
+	"zkp-api/pkg/app/verifier/service"
+	"zkp-api/pkg/http/grpc"
 )
 
 func main() {
 	// todo read server config from file
-	cs := config.Server{}
+	cfg := config.Server{
+		GRPCServer: config.GRPCServer{
+			Network: "tcp",
+			Address: ":50051",
+		},
+	}
 
 	// init verifier
-	v := verifier.NewServerVerifier()
+	vSrv := service.NewServerVerifier(cfg.G, cfg.H)
+	//HandlerVerifier
+	hv := handler.NewHandlerVerifier(vSrv)
 
-	// start server listening on the given network and address
-	if err := v.AuthServer.InitServer(cs.Network, cs.Address); err != nil {
-
+	errS := grpc.InitServer(cfg.Network, cfg.Address, hv)
+	//errS := grpc.InitServer(cfg.Network, cfg.Network, vh.AuthVerify)
+	if errS != nil {
+		log.Fatalf("unable to init server: %s", errS.Error())
 	}
 
 }
