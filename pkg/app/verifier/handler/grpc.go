@@ -35,7 +35,7 @@ func (p *Verifier) CreateAuthenticationChallenge(ctx context.Context, req *pb.Au
 		return nil, err
 	}
 	//return &pb.AuthenticationChallengeResponse{AuthId: "auth123", C: 12345}, nil
-	return &pb.AuthenticationChallengeResponse{AuthId: req.GetUser(), C: respC}, nil
+	return &pb.AuthenticationChallengeResponse{AuthId: req.GetUser(), C: respC.Bytes()}, nil
 }
 
 func (p *Verifier) VerifyAuthentication(ctx context.Context, req *pb.AuthenticationAnswerRequest) (*pb.AuthenticationAnswerResponse, error) {

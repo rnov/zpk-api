@@ -5,6 +5,7 @@ type GRPCServer struct {
 	Address string `yaml:"address"`
 }
 
+// fixme might no need to be used
 type ZKP struct {
 	G int64 `yaml:"g"`
 	H int64 `yaml:"h"`
@@ -16,10 +17,8 @@ type GRPCClient struct {
 
 type Server struct {
 	GRPCServer
-	ZKP
 }
 
 type Client struct {
 	GRPCClient
-	ZKP
 }

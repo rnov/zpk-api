@@ -22,10 +22,10 @@ func main() {
 		log.Fatalf("unable to init client: %s", errC.Error())
 	}
 
-	pSrv := service.NewServerProver(conn, cfg.G, cfg.H)
+	pSrv := service.NewServerProver(conn)
 	// note for test
 	for {
-		r, err := pSrv.Client.RequestAuthenticationChallenge("test", 0, 0)
+		r, err := pSrv.Client.RequestAuthenticationChallenge("test", nil, nil)
 		if err != nil {
 			log.Fatalf("unable to connect server: %s", err.Error())
 		} else {

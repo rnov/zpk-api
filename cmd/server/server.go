@@ -18,7 +18,7 @@ func main() {
 	}
 
 	// init verifier
-	vSrv := service.NewServerVerifier(cfg.G, cfg.H)
+	vSrv := service.NewServerVerifier()
 	//HandlerVerifier
 	hv := handler.NewHandlerVerifier(vSrv)
 
