@@ -18,7 +18,7 @@ func (s *testServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.
 }
 
 func (s *testServer) CreateAuthenticationChallenge(ctx context.Context, req *pb.AuthenticationChallengeRequest) (*pb.AuthenticationChallengeResponse, error) {
-	return &pb.AuthenticationChallengeResponse{AuthId: "auth123", C: 12345}, nil
+	return &pb.AuthenticationChallengeResponse{AuthId: "auth123", C: nil}, nil
 }
 
 func (s *testServer) VerifyAuthentication(ctx context.Context, req *pb.AuthenticationAnswerRequest) (*pb.AuthenticationAnswerResponse, error) {
@@ -33,7 +33,7 @@ func TestConnection(t *testing.T) {
 	}{
 		{
 			name: "register request",
-			req:  &pb.RegisterRequest{User: "Alice", Y1: 123, Y2: 456},
+			req:  &pb.RegisterRequest{User: "Alice", Y1: nil, Y2: nil},
 		},
 	}
 

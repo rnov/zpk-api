@@ -1,5 +1,5 @@
 # Variables
-PROTO_DIR := ./internal/api
+PROTO_DIR := ./pkg/api
 GRPC_DIR := ./pkg/http/grpc/zkp
 PROTO_FILES := $(wildcard $(PROTO_DIR)/*.proto)
 PB_GO_FILES := $(patsubst $(PROTO_DIR)/%.proto,$(GRPC_DIR)/%.pb.go,$(PROTO_FILES))
@@ -18,4 +18,4 @@ clean:
 	rm -f $(PB_GO_FILES)
 
 # works
-#  protoc --proto_path=. --go_out=./pkg --go_opt=paths=source_relative --go-grpc_out=./internal/http/grpc --go-grpc_opt=paths=source_relative auth.proto
+#  protoc --proto_path=. --go_out=./pkg --go_opt=paths=source_relative --go-grpc_out=./pkg/http/grpc --go-grpc_opt=paths=source_relative auth.proto

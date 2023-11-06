@@ -2,9 +2,9 @@ package main
 
 import (
 	"log"
-	"zkp-api/internal/config"
 	"zkp-api/pkg/app/verifier/handler"
 	"zkp-api/pkg/app/verifier/service"
+	"zkp-api/pkg/config"
 	"zkp-api/pkg/http/grpc"
 )
 

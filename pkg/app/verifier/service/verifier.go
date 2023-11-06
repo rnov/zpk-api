@@ -2,20 +2,22 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"math/big"
-	"zkp-api/internal/storage"
-	"zkp-api/internal/zkp"
+	"zkp-api/pkg/storage"
+	"zkp-api/pkg/storage/virtual"
+	"zkp-api/pkg/zkp"
 )
 
 // AuthVerifier is composed by the entities that are needed to run the verifier server side
 type AuthVerifier struct {
-	UsrStorage storage.User // access to the store
+	UsrStorage storage.VerifierStorage // access to the store
 	//AuthServer zkp.AuthServer
 }
 
 func NewServerVerifier() *AuthVerifier {
 	return &AuthVerifier{
-		UsrStorage: nil,
+		UsrStorage: virtual.NewVerifierStorage(),
 		//AuthServer: &AuthServer{},
 	}
 }
@@ -41,15 +43,26 @@ func (v *AuthVerifier) Register(user string, y1, y2 []byte) error {
 }
 
 func (v *AuthVerifier) CreateAuthenticationChallenge(user string, r1, r2 []byte) (*big.Int, error) {
-	// todo check user exist
 	if exist, err := v.UsrStorage.CheckUser(user); err != nil || !exist {
 		// todo just log the error since there's no proto schema for errors
+		log.Printf(err.Error())
 		return nil, err
 	}
 
 	// from received r1,r2 using zkp generate C challenge
 	c := zkp.GenerateChallenge(r1, r2)
 	fmt.Println("hit createAuthenticationChallenge")
+	if err := v.UsrStorage.UpdateUserChallenge(user, c.Bytes()); err != nil {
+		// todo just log the error since there's no proto schema for errors
+		log.Printf(err.Error())
+		return nil, err
+	}
+	if err := v.UsrStorage.UpdateUserRand(user, r1, r2); err != nil {
+		// todo just log the error since there's no proto schema for errors
+		log.Printf(err.Error())
+		return nil, err
+	}
+
 	return c, nil
 }
 
@@ -60,7 +73,6 @@ func (v *AuthVerifier) VerifyAuthentication(authID string, solution []byte) (str
 		return "", err
 	}
 
-	// todo from received challenge response S, using zkp validate it and generate sessionID
 	s := new(big.Int)
 	s.SetBytes(solution)
 	c := new(big.Int)
@@ -71,5 +83,5 @@ func (v *AuthVerifier) VerifyAuthentication(authID string, solution []byte) (str
 		return "", err
 	}
 	// todo generate a rnd string for auth
-	return "", nil
+	return "successfully logged", nil
 }
