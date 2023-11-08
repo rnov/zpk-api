@@ -30,7 +30,6 @@ func TestOneStepCHExponentiation(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			if valid := oneStepCHExponentiation(test.input); !valid {
 				t.Fatalf("unable to verify")
 			}
