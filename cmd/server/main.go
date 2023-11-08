@@ -9,12 +9,10 @@ import (
 )
 
 func main() {
-	// todo read server config from file
-	cfg := config.Server{
-		GRPCServer: config.GRPCServer{
-			Network: "tcp",
-			Address: ":50051",
-		},
+	// Load Verifier config
+	verifierCfg, err := config.LoadVerifierConfig("config/config.yaml")
+	if err != nil {
+		log.Fatalf("error loading verifier config: %v", err)
 	}
 
 	// init verifier
@@ -22,8 +20,7 @@ func main() {
 	//HandlerVerifier
 	hv := handler.NewHandlerVerifier(vSrv)
 
-	errS := grpc.InitServer(cfg.Network, cfg.Address, hv)
-	//errS := grpc.InitServer(cfg.Network, cfg.Network, vh.AuthVerify)
+	errS := grpc.InitServer(verifierCfg.Network, verifierCfg.Address, hv)
 	if errS != nil {
 		log.Fatalf("unable to init server: %s", errS.Error())
 	}

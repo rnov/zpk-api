@@ -12,19 +12,13 @@ import (
 // AuthVerifier is composed by the entities that are needed to run the verifier server side
 type AuthVerifier struct {
 	UsrStorage storage.VerifierStorage // access to the store
-	//AuthServer zkp.AuthServer
 }
 
 func NewServerVerifier() *AuthVerifier {
 	return &AuthVerifier{
 		UsrStorage: virtual.NewVerifierStorage(),
-		//AuthServer: &AuthServer{},
 	}
 }
-
-//type AuthServer struct {
-//	zkp.UnimplementedAuthServer
-//}
 
 type Auth interface {
 	Register(user string, y1, y2 []byte) error
@@ -44,7 +38,9 @@ func (v *AuthVerifier) Register(user string, y1, y2 []byte) error {
 
 func (v *AuthVerifier) CreateAuthenticationChallenge(user string, r1, r2 []byte) (*big.Int, error) {
 	if exist, err := v.UsrStorage.CheckUser(user); err != nil || !exist {
-		// todo just log the error since there's no proto schema for errors
+		if err == nil {
+			err = fmt.Errorf("user '%s' does not exist", user)
+		}
 		log.Printf(err.Error())
 		return nil, err
 	}
@@ -53,12 +49,12 @@ func (v *AuthVerifier) CreateAuthenticationChallenge(user string, r1, r2 []byte)
 	c := zkp.GenerateChallenge(r1, r2)
 	fmt.Println("hit createAuthenticationChallenge")
 	if err := v.UsrStorage.UpdateUserChallenge(user, c.Bytes()); err != nil {
-		// todo just log the error since there's no proto schema for errors
+		// note just log the error since there's no proto schema for errors
 		log.Printf(err.Error())
 		return nil, err
 	}
 	if err := v.UsrStorage.UpdateUserRand(user, r1, r2); err != nil {
-		// todo just log the error since there's no proto schema for errors
+		// note just log the error since there's no proto schema for errors
 		log.Printf(err.Error())
 		return nil, err
 	}

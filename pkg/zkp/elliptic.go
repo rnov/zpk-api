@@ -1,3 +1,5 @@
+//go:build curve
+
 package zkp
 
 import (
@@ -5,9 +7,11 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"math/big"
 )
 
@@ -227,61 +231,143 @@ func Verify(y1b, y2b, r1b, r2b []byte, s, c *big.Int) bool {
 	z4 := r2ComputedY.Cmp(rc2.Y)
 
 	return z1 == 0 && z2 == 0 && z3 == 0 && z4 == 0
-	//return r1ComputedX.Cmp(rc1.X) == 0 && r1ComputedY.Cmp(rc1.Y) == 0 &&
-	//	r2ComputedX.Cmp(rc2.X) == 0 && r2ComputedY.Cmp(rc2.Y) == 0
 }
 
-func Verify2(y1b, y2b, r1b, r2b []byte, s, c *big.Int) bool {
-	y1, _ := fromBytes(y1b)  // Deserializes to point y1 on the curve
-	y2, _ := fromBytes(y2b)  // Deserializes to point y2 on the curve
-	rc1, _ := fromBytes(r1b) // Deserializes to point rc1 on the curve
-	rc2, _ := fromBytes(r2b) // Deserializes to point rc2 on the curve
+func oneStepCH(secret *big.Int) bool {
 
-	// Check if provided points are on the curve
-	if !curve.IsOnCurve(y1.X, y1.Y) || !curve.IsOnCurve(y2.X, y2.Y) ||
-		!curve.IsOnCurve(rc1.X, rc1.Y) || !curve.IsOnCurve(rc2.X, rc2.Y) {
-		return false // If any point is not on the curve, verification fails
+	// GeneratePublicCommitments
+	gx, gy := curve.ScalarBaseMult(secret.Bytes())     // y1
+	hx, hy := curve.ScalarMult(Hx, Hy, secret.Bytes()) // y2
+
+	// ProverCommitment
+	n := curve.Params().N
+	r, err := rand.Int(rand.Reader, n)
+	if err != nil {
+		return false
 	}
 
+	rx1, ry1 := curve.ScalarBaseMult(r.Bytes())
+	rx2, ry2 := curve.ScalarMult(Hx, Hy, r.Bytes())
+
+	// GenerateChallenge
+	hash := sha256.New()
+	hash.Write(rx1.Bytes())
+	hash.Write(ry1.Bytes())
+	hash.Write(rx2.Bytes())
+	hash.Write(ry2.Bytes())
+	hashed := hash.Sum(nil)
+
+	c := new(big.Int).SetBytes(hashed)
+	// Ensure that the challenge c is within the order of the curve
+	c.Mod(c, curve.Params().N)
+	if c.Sign() == 0 {
+		return false // Challenge cannot be zero after modulo operation
+	}
+
+	// SolveChallenge
+	s := new(big.Int).Mul(c, secret) // Multiply challenge by secret
+	s.Mod(s, n)                      // Ensure the result is within the order of the curve
+	fmt.Printf("c * secret mod n: %d\n", s)
+
+	s.Add(s, r) // Add random nonce to the product
+	s.Mod(s, n) // Ensure the result is within the order of the curve
+	fmt.Printf("s (after addition and mod n): %d\n", s)
+
+	fmt.Printf("Secret: %d\n", secret)
+	fmt.Printf("Nonce r: %d\n", r)
+	fmt.Printf("Challenge c: %d\n", c)
+	fmt.Printf("Order of curve n: %d\n", n)
+
+	// Verify
 	// Compute g^s
 	gsx, gsy := curve.ScalarBaseMult(s.Bytes())
 
 	// Compute y1^c
-	y1cx, y1cy := curve.ScalarMult(y1.X, y1.Y, c.Bytes())
+	y1cx, y1cy := curve.ScalarMult(gx, gy, c.Bytes())
 
-	// Compute the point (g^s) * (y1^c)
+	// Compute r1' = g^s + y1^c (point addition on the elliptic curve)
 	r1ComputedX, r1ComputedY := curve.Add(gsx, gsy, y1cx, y1cy)
 
-	// Compute h^s using the y2's X and Y coordinates
-	hsx, hsy := curve.ScalarMult(y2.X, y2.Y, s.Bytes())
+	// Compute h^s using y2's X and Y coordinates (since y2 is the commitment of H)
+	hsx, hsy := curve.ScalarMult(Hx, Hy, s.Bytes())
 
 	// Compute y2^c
-	y2cx, y2cy := curve.ScalarMult(y2.X, y2.Y, c.Bytes())
+	y2cx, y2cy := curve.ScalarMult(hx, hy, c.Bytes())
 
-	// Compute the point (h^s) * (y2^c)
+	// Compute r2' = h^s + y2^c (point addition on the elliptic curve)
 	r2ComputedX, r2ComputedY := curve.Add(hsx, hsy, y2cx, y2cy)
 
-	//
-	//// Compute g^s
-	//gsx, gsy := curve.ScalarBaseMult(s.Bytes())
-	//
-	//// Compute y1^-c (i.e., y1 to the power of -c mod n)
-	//n := curve.Params().N
-	//minusC := new(big.Int).Neg(c)
-	//minusC.Mod(minusC, n)
-	//y1cx, y1cy := curve.ScalarMult(y1.X, y1.Y, minusC.Bytes())
-	//
-	//// Compute r1 = g^s * y1^-c
-	//r1ComputedX, r1ComputedY := curve.Add(gsx, gsy, y1cx, y1cy)
-	//
-	//// Similarly for r2, h^s * y2^-c
-	//hsx, hsy := curve.ScalarMult(Hx, Hy, s.Bytes()) // Corrected to use H instead of y2
-	//y2cx, y2cy := curve.ScalarMult(y2.X, y2.Y, minusC.Bytes())
-	//
-	//// Compute r2 = h^s * y2^-c
-	//r2ComputedX, r2ComputedY := curve.Add(hsx, hsy, y2cx, y2cy)
+	// Compare the computed r1' and r2' with the originally generated commitments r1 and r2
+	z1 := r1ComputedX.Cmp(rx1)
+	z2 := r1ComputedY.Cmp(ry1)
+	z3 := r2ComputedX.Cmp(rx2)
+	z4 := r2ComputedY.Cmp(ry2)
 
-	// Compare the computed r1 and r2 with the provided commitments rc1 and rc2
-	return r1ComputedX.Cmp(rc1.X) == 0 && r1ComputedY.Cmp(rc1.Y) == 0 &&
-		r2ComputedX.Cmp(rc2.X) == 0 && r2ComputedY.Cmp(rc2.Y) == 0
+	return z1 == 0 && z2 == 0 && z3 == 0 && z4 == 0
+
+}
+
+func padByteSlice(slice []byte, length int) []byte {
+	newSlice := make([]byte, length)
+	copy(newSlice[length-len(slice):], slice)
+	return newSlice
+}
+
+func oneStepCHBTC(secret *big.Int) bool {
+	// Ensure the secret is within the range [0, n-1]
+	curveBtc := btcec.S256() // This is the secp256k1 curveBtc provided by the btcec package
+	// Set up your secondary base point H (Hx, Hy) for secp256k1
+	Hx, Hy := btcec.S256().ScalarBaseMult(big.NewInt(2).Bytes()) // Just an example, use a real point.
+
+	n := curveBtc.N
+	secret.Mod(secret, n)
+	secretBytes := padByteSlice(secret.Bytes(), curveBtc.BitSize/8)
+
+	// GeneratePublicCommitments
+	gx, gy := curveBtc.ScalarBaseMult(secretBytes)
+	hx, hy := curveBtc.ScalarMult(Hx, Hy, secretBytes)
+
+	// ProverCommitment
+	r, err := rand.Int(rand.Reader, n)
+	if err != nil {
+		return false
+	}
+	rBytes := padByteSlice(r.Bytes(), curveBtc.BitSize/8)
+	rx1, ry1 := curveBtc.ScalarBaseMult(rBytes)
+	rx2, ry2 := curveBtc.ScalarMult(Hx, Hy, rBytes)
+
+	// GenerateChallenge
+	hash := sha256.New()
+	hash.Write(rx1.Bytes())
+	hash.Write(ry1.Bytes())
+	hash.Write(rx2.Bytes())
+	hash.Write(ry2.Bytes())
+	hashed := hash.Sum(nil)
+
+	c := new(big.Int).SetBytes(hashed)
+	c.Mod(c, n) // Ensure that the challenge c is within the order of the curveBtc
+
+	// SolveChallenge
+	s := new(big.Int).Mul(c, secret)
+	s.Mod(s, n) // mod n
+	s.Add(s, r) // r + cx
+	s.Mod(s, n) // mod n again after addition
+	sBytes := padByteSlice(s.Bytes(), curveBtc.BitSize/8)
+
+	// Verify
+	gsx, gsy := curveBtc.ScalarBaseMult(sBytes)
+	y1cx, y1cy := curveBtc.ScalarMult(gx, gy, padByteSlice(c.Bytes(), curveBtc.BitSize/8))
+	r1ComputedX, r1ComputedY := curveBtc.Add(gsx, gsy, y1cx, y1cy)
+
+	hsx, hsy := curveBtc.ScalarMult(Hx, Hy, sBytes)
+	y2cx, y2cy := curveBtc.ScalarMult(hx, hy, padByteSlice(c.Bytes(), curveBtc.BitSize/8))
+	r2ComputedX, r2ComputedY := curveBtc.Add(hsx, hsy, y2cx, y2cy)
+
+	// Use constant time compare
+	z1 := subtle.ConstantTimeCompare(padByteSlice(r1ComputedX.Bytes(), curveBtc.BitSize/8), padByteSlice(rx1.Bytes(), curveBtc.BitSize/8))
+	z2 := subtle.ConstantTimeCompare(padByteSlice(r1ComputedY.Bytes(), curveBtc.BitSize/8), padByteSlice(ry1.Bytes(), curveBtc.BitSize/8))
+	z3 := subtle.ConstantTimeCompare(padByteSlice(r2ComputedX.Bytes(), curveBtc.BitSize/8), padByteSlice(rx2.Bytes(), curveBtc.BitSize/8))
+	z4 := subtle.ConstantTimeCompare(padByteSlice(r2ComputedY.Bytes(), curveBtc.BitSize/8), padByteSlice(ry2.Bytes(), curveBtc.BitSize/8))
+
+	return z1 == 1 && z2 == 1 && z3 == 1 && z4 == 1
 }
