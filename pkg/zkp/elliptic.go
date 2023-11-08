@@ -7,11 +7,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"math/big"
 )
 
@@ -164,7 +162,7 @@ func SolveChallenge(secret, r, c *big.Int) (*big.Int, error) {
 	// Check that 0 < r, secret < n
 	if secret.Cmp(big.NewInt(0)) <= 0 || secret.Cmp(n) >= 0 ||
 		r.Cmp(big.NewInt(0)) <= 0 || r.Cmp(n) >= 0 {
-		return nil, errors.New("invalid input: secret or r are out of valid range")
+		return nil, errors.New("invalid secret: secret or r are out of valid range")
 	}
 
 	// s = r + cx (mod n), where x is the secret, r is the random value from commitment,
@@ -304,70 +302,4 @@ func oneStepCH(secret *big.Int) bool {
 	z4 := r2ComputedY.Cmp(ry2)
 
 	return z1 == 0 && z2 == 0 && z3 == 0 && z4 == 0
-
-}
-
-func padByteSlice(slice []byte, length int) []byte {
-	newSlice := make([]byte, length)
-	copy(newSlice[length-len(slice):], slice)
-	return newSlice
-}
-
-func oneStepCHBTC(secret *big.Int) bool {
-	// Ensure the secret is within the range [0, n-1]
-	curveBtc := btcec.S256() // This is the secp256k1 curveBtc provided by the btcec package
-	// Set up your secondary base point H (Hx, Hy) for secp256k1
-	Hx, Hy := btcec.S256().ScalarBaseMult(big.NewInt(2).Bytes()) // Just an example, use a real point.
-
-	n := curveBtc.N
-	secret.Mod(secret, n)
-	secretBytes := padByteSlice(secret.Bytes(), curveBtc.BitSize/8)
-
-	// GeneratePublicCommitments
-	gx, gy := curveBtc.ScalarBaseMult(secretBytes)
-	hx, hy := curveBtc.ScalarMult(Hx, Hy, secretBytes)
-
-	// ProverCommitment
-	r, err := rand.Int(rand.Reader, n)
-	if err != nil {
-		return false
-	}
-	rBytes := padByteSlice(r.Bytes(), curveBtc.BitSize/8)
-	rx1, ry1 := curveBtc.ScalarBaseMult(rBytes)
-	rx2, ry2 := curveBtc.ScalarMult(Hx, Hy, rBytes)
-
-	// GenerateChallenge
-	hash := sha256.New()
-	hash.Write(rx1.Bytes())
-	hash.Write(ry1.Bytes())
-	hash.Write(rx2.Bytes())
-	hash.Write(ry2.Bytes())
-	hashed := hash.Sum(nil)
-
-	c := new(big.Int).SetBytes(hashed)
-	c.Mod(c, n) // Ensure that the challenge c is within the order of the curveBtc
-
-	// SolveChallenge
-	s := new(big.Int).Mul(c, secret)
-	s.Mod(s, n) // mod n
-	s.Add(s, r) // r + cx
-	s.Mod(s, n) // mod n again after addition
-	sBytes := padByteSlice(s.Bytes(), curveBtc.BitSize/8)
-
-	// Verify
-	gsx, gsy := curveBtc.ScalarBaseMult(sBytes)
-	y1cx, y1cy := curveBtc.ScalarMult(gx, gy, padByteSlice(c.Bytes(), curveBtc.BitSize/8))
-	r1ComputedX, r1ComputedY := curveBtc.Add(gsx, gsy, y1cx, y1cy)
-
-	hsx, hsy := curveBtc.ScalarMult(Hx, Hy, sBytes)
-	y2cx, y2cy := curveBtc.ScalarMult(hx, hy, padByteSlice(c.Bytes(), curveBtc.BitSize/8))
-	r2ComputedX, r2ComputedY := curveBtc.Add(hsx, hsy, y2cx, y2cy)
-
-	// Use constant time compare
-	z1 := subtle.ConstantTimeCompare(padByteSlice(r1ComputedX.Bytes(), curveBtc.BitSize/8), padByteSlice(rx1.Bytes(), curveBtc.BitSize/8))
-	z2 := subtle.ConstantTimeCompare(padByteSlice(r1ComputedY.Bytes(), curveBtc.BitSize/8), padByteSlice(ry1.Bytes(), curveBtc.BitSize/8))
-	z3 := subtle.ConstantTimeCompare(padByteSlice(r2ComputedX.Bytes(), curveBtc.BitSize/8), padByteSlice(rx2.Bytes(), curveBtc.BitSize/8))
-	z4 := subtle.ConstantTimeCompare(padByteSlice(r2ComputedY.Bytes(), curveBtc.BitSize/8), padByteSlice(ry2.Bytes(), curveBtc.BitSize/8))
-
-	return z1 == 1 && z2 == 1 && z3 == 1 && z4 == 1
 }

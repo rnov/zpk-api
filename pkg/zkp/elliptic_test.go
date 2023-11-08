@@ -21,13 +21,13 @@ func TestOneStepElliptic(t *testing.T) {
 	}{
 		{
 			name:  "verify",
-			input: secret, //input
+			input: secret, //secret
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			//y1, y2, err := GeneratePublicCommitments(test.input)
+			//y1, y2, err := GeneratePublicCommitments(test.secret)
 			//if err != nil {
 			//	t.Fatalf("error generating public commitments: %s", err.Error())
 			//}
@@ -37,7 +37,7 @@ func TestOneStepElliptic(t *testing.T) {
 			//}
 			//c := GenerateChallenge(r1, r2)
 			//
-			//s, err := SolveChallenge(input, r, c)
+			//s, err := SolveChallenge(secret, r, c)
 			//if err != nil {
 			//	t.Fatalf("error solving challenge: %s", err.Error())
 			//}
@@ -48,7 +48,7 @@ func TestOneStepElliptic(t *testing.T) {
 			//}
 
 			if !oneStepCH(test.input) {
-				//if !oneStepCHBTC(test.input) {
+				//if !oneStepCHBTC(test.secret) {
 				t.Fatalf("unable to verify")
 			}
 		})

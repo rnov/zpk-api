@@ -8,18 +8,24 @@ import (
 	"zkp-api/pkg/app/prover/service"
 )
 
-// AuthHandler - holds the service that manages auth operation
+// AuthHandler is an HTTP handler that provides endpoints for user registration and login.
+// Auth is a reference to the service that performs the actual authentication logic.
 type AuthHandler struct {
 	Auth service.Auth
 }
 
-// NewAuthHandler - auth handler constructor
+// NewAuthHandler creates a new AuthHandler with a reference to an Auth service.
+// It returns a pointer to the created AuthHandler.
 func NewAuthHandler(auth service.Auth) *AuthHandler {
 	return &AuthHandler{
 		Auth: auth,
 	}
 }
 
+// RegisterUserHandler handles the HTTP request for registering a new user.
+// It decodes the request body into a RegisterReq struct, validates the password,
+// and calls the Register method of the Auth (prover) service.
+// Responds with an appropriate HTTP status code depending on the outcome of the operation.
 func (a *AuthHandler) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 	req := &jr.RegisterReq{}
 	dec := json.NewDecoder(r.Body)
@@ -45,6 +51,11 @@ func (a *AuthHandler) RegisterUserHandler(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusCreated)
 }
 
+// LoginUserHandler handles the HTTP request for logging in a user.
+// It decodes the request body into a LoginReq struct and calls the AuthenticationChallenge
+// method of the Auth service to initiate the login process.
+// If successful, it returns the challenge in the response body, otherwise it responds
+// with an appropriate HTTP status code.
 func (a *AuthHandler) LoginUserHandler(w http.ResponseWriter, r *http.Request) {
 	req := &jr.LoginReq{}
 	dec := json.NewDecoder(r.Body)
