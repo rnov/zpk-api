@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"math/big"
@@ -98,6 +99,11 @@ func (v *AuthVerifier) VerifyAuthentication(authID string, solution []byte) (str
 		log.Printf(err.Error())
 		return "", err
 	}
-	// todo generate a rnd string for auth
-	return "successfully logged", nil
+
+	// For the POC, we just concatenate s and c and hash them
+	combined := append(s.Bytes(), c.Bytes()...)
+	hash := sha256.Sum256(combined)
+	otp := new(big.Int).SetBytes(hash[:])
+
+	return otp.String(), nil
 }

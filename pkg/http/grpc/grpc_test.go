@@ -52,10 +52,12 @@ func TestConnection(t *testing.T) {
 	}
 
 	ts := &testServer{}
-	errS := InitServer("tcp", ":50051", ts)
-	if errS != nil {
-		t.Fatalf("unable to init server: %s", errS.Error())
-	}
+
+	// note skip error check since it does not return once triggered therefore block mechanism do not work
+	// just trigger a goroutine for simplicity
+	go func() {
+		_ = InitServer("tcp", ":50051", ts)
+	}()
 
 	conn, errC := InitClient("localhost:50051")
 	if errC != nil {

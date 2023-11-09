@@ -1,0 +1,10 @@
+prover:
+  grpc_client:
+    target: "verifier:50051" # Use the service name as the hostname
+  http_server:
+    port: "0.0.0.0:8080" # Listen on all interfaces inside the container
+
+verifier:
+  grpc_server:
+    network: "tcp"
+    address: "0.0.0.0:50051" # Listen on all interfaces inside the container

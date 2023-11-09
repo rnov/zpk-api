@@ -1,10 +1,10 @@
 prover:
-    grpc_client:
-      target: "localhost:50051"
-    http_server:
-      port: "localhost:8080"
+  grpc_client:
+    target: "localhost:50051"
+  http_server:
+    port: "localhost:8080"
 
 verifier:
-    grpc_server:
-      network: "tcp"
-      address: ":50051"
+  grpc_server:
+    network: "tcp"
+    address: ":50051"

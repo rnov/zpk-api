@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  prover:
+    build:
+      context: .
+      dockerfile: dockerfile/prover.Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - verifier
+    networks:
+      - zpk-network
+
+  verifier:
+    build:
+      context: .
+      dockerfile: dockerfile/verifier.Dockerfile
+    networks:
+      - zpk-network
+
+networks:
+  zpk-network:
+    driver: bridge
