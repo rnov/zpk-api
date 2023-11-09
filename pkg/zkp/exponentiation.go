@@ -16,12 +16,18 @@ var (
 	h = big.NewInt(9)  // generator h
 )
 
-// modExp calculates (base^exp) % mod using big.Int for large numbers
+// modExp calculates (base^exp) % mod using big.Int for large numbers.
+// This function is a fundamental operation in many cryptographic protocols,
+// including the Chaum–Pedersen protocol, where it is used to compute modular
+// exponentiations securely.
 func modExp(base, exp, mod *big.Int) *big.Int {
 	return new(big.Int).Exp(base, exp, mod)
 }
 
-// generateNonce generates a random nonce less than max
+// generateNonce generates a random nonce less than max.
+// In the context of the Chaum–Pedersen protocol, a nonce is a secret random
+// number used once to ensure that the outputs of the protocol are not reusable,
+// preserving the security properties of the protocol.
 func generateNonce(max *big.Int) (*big.Int, error) {
 	n, err := rand.Int(rand.Reader, max)
 	if err != nil {
@@ -30,6 +36,9 @@ func generateNonce(max *big.Int) (*big.Int, error) {
 	return n, nil
 }
 
+// GeneratePublicCommitments generates public commitments y1 and y2 from a secret
+// within the Chaum–Pedersen protocol. These commitments are used to publicly
+// demonstrate knowledge of a secret while keeping the secret hidden.
 func GeneratePublicCommitments(secret *big.Int) (y1, y2 []byte, err error) {
 	y1I := modExp(g, secret, p)
 	y2I := modExp(h, secret, p)
@@ -37,7 +46,9 @@ func GeneratePublicCommitments(secret *big.Int) (y1, y2 []byte, err error) {
 	return y1I.Bytes(), y2I.Bytes(), nil
 }
 
-// ProverCommitment generates random commitments r1 and r2 for the prover.
+// ProverCommitment generates random commitments r1 and r2 for the prover
+// within the Chaum–Pedersen protocol. These commitments are used to create
+// a proof of knowledge of the secret that corresponds to the public commitments.
 func ProverCommitment() (r1, r2 []byte, r *big.Int, err error) {
 	r, err = generateNonce(new(big.Int).Sub(p, big.NewInt(1))) // nonce should be less than p
 	if err != nil {
@@ -50,6 +61,10 @@ func ProverCommitment() (r1, r2 []byte, r *big.Int, err error) {
 	return r1I.Bytes(), r2I.Bytes(), r, nil
 }
 
+// GenerateChallenge generates a challenge for the Chaum–Pedersen protocol.
+// The challenge is derived from the prover's random commitments and is used
+// by the verifier to ensure the prover's knowledge of the secret without
+// revealing the secret itself.
 func GenerateChallenge(r1b, r2b []byte) *big.Int {
 	hash := sha256.New()
 	hash.Write(r1b)
@@ -65,6 +80,9 @@ func GenerateChallenge(r1b, r2b []byte) *big.Int {
 	return c
 }
 
+// SolveChallenge computes the solution to a given challenge in the Chaum–Pedersen protocol.
+// The solution is a value that, when combined with the public commitments and the prover's
+// random commitments, will satisfy the verification equation without revealing the secret.
 func SolveChallenge(secret, r, c *big.Int) (*big.Int, error) {
 	s := new(big.Int).Sub(r, new(big.Int).Mul(c, secret))
 	s.Mod(s, new(big.Int).Sub(p, big.NewInt(1))) // Adjusted to ensure s is within Z_q
@@ -73,6 +91,9 @@ func SolveChallenge(secret, r, c *big.Int) (*big.Int, error) {
 	return s, nil
 }
 
+// Verify checks if the prover's response to a challenge in the Chaum–Pedersen protocol is correct.
+// It ensures that the commitments and the solution satisfy the verification equation,
+// confirming the prover's knowledge of the secret associated with the public commitments.
 func Verify(y1b, y2b, r1b, r2b []byte, s, c *big.Int) bool {
 	y1 := new(big.Int).SetBytes(y1b)
 	y2 := new(big.Int).SetBytes(y2b)

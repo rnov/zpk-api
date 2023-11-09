@@ -31,7 +31,6 @@ func TestOneStepElliptic(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			if !oneStepCH(test.input) {
-				//if !oneStepCHBTC(test.secret) {
 				t.Fatalf("unable to verify")
 			}
 		})
