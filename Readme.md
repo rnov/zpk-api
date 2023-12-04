@@ -2,7 +2,7 @@
 
 Made with :blue_heart: by rnov.
 
-ZKP-API is an implementation of the Chaum–Pedersen Protocol, a zero-knowledge proof system. 
+ZKP-API is portfolio project of the Chaum–Pedersen Protocol, a zero-knowledge proof system. 
 It consists of two main components: a client (prover) and a server (verifier). These components communicate over gRPC to generate and validate one-time passwords (OTPs) for secure login processes.
 
 The prover component also exposes an HTTP server that facilitates `/register` and `/login` operations.
@@ -65,7 +65,7 @@ The project's structure largely adheres to the [golang-standards/project-layout]
 - **ZKP Chaum-Pedersen Implementation**:
   - The implementation uses `big.Int` for mathematical operations.
   - As a proof of concept (PoC), certain variables that would typically be generated at runtime are statically defined.
-  - It is important to note that the elliptic curve implementation is currently not functioning as expected and fails to evaluate correctly.
+  - It is important to note that the elliptic curve implementation is currently not functional, as it is still a work in progress.
 
 ### Implementation notes:
   * In both zkp implementations at the beginning of each file there is the following: `//go:build expo` || `//go:build curve` this is a tag for compile build,
@@ -73,5 +73,3 @@ The project's structure largely adheres to the [golang-standards/project-layout]
   * Most of the code has detailed comments that usually would not be needed in such detail.
     There is also plenty of comments as `note:` that would not be needed under different circumstances.
   * Added tests in the most critical and relevant part of the code.
-  * Spent about 40% of the time trying to figure out the issue with the elliptic curve implementation, at this point
-    it is either something very small or just a std lib issue. A good amount of the code of the elliptic curve has been left out.
