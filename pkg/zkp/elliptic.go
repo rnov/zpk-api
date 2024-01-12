@@ -41,13 +41,13 @@ func ProverCommitment(x kyber.Point) (kyber.Point, kyber.Point, kyber.Point, kyb
 }
 
 // GenerateChallenge creates a challenge for the prover by hashing their commitments.
-func GenerateChallenge(G, H kyber.Point) kyber.Scalar {
+func GenerateChallenge(g, h kyber.Point) kyber.Scalar {
 	// Begin Chaum-Pedersen proof
 	// Randomly pick a scalar k
 	k := suite.Scalar().Pick(rng)
 	// Compute kG and kH
-	kG := suite.Point().Mul(k, G)
-	kH := suite.Point().Mul(k, H)
+	kG := suite.Point().Mul(k, g)
+	kH := suite.Point().Mul(k, h)
 
 	kGb, _ := kG.MarshalBinary()
 	kHb, _ := kH.MarshalBinary()
@@ -68,11 +68,11 @@ func SolveChallenge(cScalar, x, k kyber.Scalar) kyber.Scalar {
 	return r
 }
 
-func Verify(cScalar, r, G, H kyber.Scalar, xG, xH, kG, kH kyber.Point) bool {
+func Verify(cScalar, r, g, h kyber.Scalar, xG, xH, kG, kH kyber.Point) bool {
 	// Verification step
 	// Compute rG and rH
-	rG := suite.Point().Mul(r, G)
-	rH := suite.Point().Mul(r, H)
+	rG := suite.Point().Mul(r, g)
+	rH := suite.Point().Mul(r, h)
 	// Compute cxG and cxH
 	cxG := suite.Point().Mul(cScalar, xG)
 	cxH := suite.Point().Mul(cScalar, xH)
