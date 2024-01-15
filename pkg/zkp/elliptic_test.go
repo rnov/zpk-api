@@ -3,6 +3,8 @@
 package zkp
 
 import (
+	"go.dedis.ch/kyber/v3"
+	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"math/big"
 	"testing"
 )
@@ -30,12 +32,13 @@ func TestOneStepElliptic(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if !oneStepCH(test.input) {
+			if !oneStepEllipticCurveCP(test.input) {
 				t.Fatalf("unable to verify")
 			}
 		})
 	}
 }
+
 func TestEllipticCurveFlow(t *testing.T) {
 	secret.SetString("929283747463652525354647586969473", 10)
 
@@ -55,25 +58,111 @@ func TestEllipticCurveFlow(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			y1, y2, err := GeneratePublicCommitments(test.input)
-			if err != nil {
-				t.Fatalf("error generating public commitments: %s", err.Error())
-			}
-			r1, r2, r, err := ProverCommitment()
-			if err != nil {
-				t.Fatalf("error generating random commitments: %s", err.Error())
-			}
-			c := GenerateChallenge(r1, r2)
 
-			s, err := SolveChallenge(test.input, r, c)
-			if err != nil {
-				t.Fatalf("error solving challenge: %s", err.Error())
-			}
+			g, h, xg, xh, x := GeneratePublicCommitments(test.input)
 
-			if valid := Verify(y1, y2, r1, r2, s, c); !valid {
+			kg, kh, k := ProverCommitment(g, h)
+
+			cScalar := GenerateChallenge(kg, kh)
+
+			r := SolveChallenge(cScalar, x, k)
+
+			if valid := Verify(cScalar, r, g, h, xg, xh, kg, kh); !valid {
 				t.Fatalf("unable to verify")
 			}
 
+		})
+	}
+}
+
+func TestEllipticFailProveCommitmentCurveFlow(t *testing.T) {
+	secret.SetString("929283747463652525354647586969473", 10)
+
+	tests := []struct {
+		name  string
+		input *big.Int
+	}{
+		{
+			name:  "verify - very big.Int set by String ",
+			input: secret,
+		},
+		{
+			name:  "verify - big.Int set by int64",
+			input: new(big.Int).SetInt64(12345),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			g, h, xg, xh, x := GeneratePublicCommitments(test.input)
+
+			//pick random values for ProverCommitment(g, h) in order to fail the test
+			kg, kh, k := func() (kyber.Point, kyber.Point, kyber.Scalar) {
+				NotValidSuite := edwards25519.NewBlakeSHA256Ed25519()
+				return NotValidSuite.Point().Pick(rng), NotValidSuite.Point().Pick(rng), NotValidSuite.Scalar().Pick(rng)
+			}()
+
+			cScalar := GenerateChallenge(kg, kh)
+
+			r := SolveChallenge(cScalar, x, k)
+
+			if valid := Verify(cScalar, r, g, h, xg, xh, kg, kh); valid {
+				t.Fatalf("test should fail")
+			}
+		})
+	}
+}
+
+func TestEllipticFailGenerateChallengeCurveFlow(t *testing.T) {
+	secret.SetString("929283747463652525354647586969473", 10)
+
+	tests := []struct {
+		name  string
+		input *big.Int
+	}{
+		{
+			name:  "verify - very big.Int set by String ",
+			input: secret,
+		},
+		{
+			name:  "verify - big.Int set by int64",
+			input: new(big.Int).SetInt64(12345),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			g, h, xg, xh, x := GeneratePublicCommitments(test.input)
+
+			kg, kh, k := ProverCommitment(g, h)
+
+			// mock generate challenge to fail the test
+			//cScalar := func() kyber.Scalar {
+			//	NotValidSuite := edwards25519.NewBlakeSHA256Ed25519()
+			//	res := NotValidSuite.Scalar().SetBytes([]byte("intentional mismatch"))
+			//	return res
+			//	//NotValidSuite := edwards25519.NewBlakeSHA256Ed25519()
+			//	//
+			//	//kg := NotValidSuite.Point().Pick(random.New())
+			//	//kh := NotValidSuite.Point().Pick(random.New())
+			//	//
+			//	//kgb, _ := kg.MarshalBinary()
+			//	//khb, _ := kh.MarshalBinary()
+			//	//c := sha256.Sum256(append(kgb, khb...))
+			//	//// Convert hash to a scalar
+			//	//cScalar := NotValidSuite.Scalar().SetBytes(c[:32])
+			//	//return cScalar
+			//}()
+
+			cScalar := suite.Scalar().SetBytes([]byte("intentional mismatch"))
+
+			r := SolveChallenge(cScalar, x, k)
+
+			if valid := Verify(cScalar, r, g, h, xg, xh, kg, kh); valid {
+				t.Fatalf("test should fail")
+			}
 		})
 	}
 }
