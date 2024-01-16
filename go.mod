@@ -10,7 +10,15 @@ require (
 )
 
 require (
+	github.com/btcsuite/btcd/btcec/v2 v2.1.3
+	go.dedis.ch/kyber/v3 v3.1.0
+)
+
+require (
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	go.dedis.ch/fixbuf v1.0.3 // indirect
+	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
