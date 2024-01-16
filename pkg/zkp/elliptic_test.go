@@ -137,6 +137,7 @@ func TestEllipticFailGenerateChallengeCurveFlow(t *testing.T) {
 			g, h, xg, xh, x := GeneratePublicCommitments(test.input)
 
 			kg, kh, k := ProverCommitment(g, h)
+			//kg = suite.Point().Add(kg, suite.Point().Base())
 
 			// mock generate challenge to fail the test
 			//cScalar := func() kyber.Scalar {
@@ -163,6 +164,60 @@ func TestEllipticFailGenerateChallengeCurveFlow(t *testing.T) {
 			if valid := Verify(cScalar, r, g, h, xg, xh, kg, kh); valid {
 				t.Fatalf("test should fail")
 			}
+		})
+	}
+}
+
+func TestEllipticFailVerifyCurveFlow(t *testing.T) {
+	secret.SetString("929283747463652525354647586969473", 10)
+
+	tests := []struct {
+		name  string
+		input *big.Int
+	}{
+		{
+			name:  "verify - very big.Int set by String ",
+			input: secret,
+		},
+		{
+			name:  "verify - big.Int set by int64",
+			input: new(big.Int).SetInt64(12345),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			g, h, xg, xh, x := GeneratePublicCommitments(test.input)
+
+			kg, kh, k := ProverCommitment(g, h)
+
+			cScalar := GenerateChallenge(kg, kh)
+
+			r := SolveChallenge(cScalar, x, k)
+
+			// Verification step
+			// params to fail the test
+			//r = cScalar // fails the test
+			cScalar = r // fails the test
+
+			// Compute rG and rH
+			rG := suite.Point().Mul(r, g)
+			rH := suite.Point().Mul(r, h)
+			// Compute cxG and cxH
+			cxG := suite.Point().Mul(cScalar, xg)
+			cxH := suite.Point().Mul(cScalar, xh)
+			// Check if kG == rG + cxG and kH == rH + cxH
+			a := suite.Point().Add(rG, cxG)
+			b := suite.Point().Add(rH, cxH)
+
+			if kg.Equal(a) && kh.Equal(b) {
+				t.Fatalf("test should fail")
+			}
+			//return kG.Equal(a) && kH.Equal(b)
+			//if valid := Verify(cScalar, r, g, h, xg, xh, kg, kh); !valid {
+			//	t.Fatalf("unable to verify")
+			//}
 		})
 	}
 }
