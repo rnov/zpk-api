@@ -3,6 +3,7 @@
 package zkp
 
 import (
+	"crypto/sha256"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"math/big"
@@ -63,7 +64,7 @@ func TestEllipticCurveFlow(t *testing.T) {
 
 			kg, kh, k := ProverCommitment(g, h)
 
-			cScalar := GenerateChallenge(kg, kh)
+			cScalar := GenerateChallenge()
 
 			r := SolveChallenge(cScalar, x, k)
 
@@ -103,7 +104,7 @@ func TestEllipticFailProveCommitmentCurveFlow(t *testing.T) {
 				return NotValidSuite.Point().Pick(rng), NotValidSuite.Point().Pick(rng), NotValidSuite.Scalar().Pick(rng)
 			}()
 
-			cScalar := GenerateChallenge(kg, kh)
+			cScalar := GenerateChallenge()
 
 			r := SolveChallenge(cScalar, x, k)
 
@@ -114,7 +115,7 @@ func TestEllipticFailProveCommitmentCurveFlow(t *testing.T) {
 	}
 }
 
-func TestEllipticFailGenerateChallengeCurveFlow(t *testing.T) {
+func TestEllipticFailVerificationBySolveChallengeCurveFlow(t *testing.T) {
 	secret.SetString("929283747463652525354647586969473", 10)
 
 	tests := []struct {
@@ -134,32 +135,18 @@ func TestEllipticFailGenerateChallengeCurveFlow(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			g, h, xg, xh, x := GeneratePublicCommitments(test.input)
+			g, h, xg, xh, _ := GeneratePublicCommitments(test.input)
 
 			kg, kh, k := ProverCommitment(g, h)
-			//kg = suite.Point().Add(kg, suite.Point().Base())
 
-			// mock generate challenge to fail the test
-			//cScalar := func() kyber.Scalar {
-			//	NotValidSuite := edwards25519.NewBlakeSHA256Ed25519()
-			//	res := NotValidSuite.Scalar().SetBytes([]byte("intentional mismatch"))
-			//	return res
-			//	//NotValidSuite := edwards25519.NewBlakeSHA256Ed25519()
-			//	//
-			//	//kg := NotValidSuite.Point().Pick(random.New())
-			//	//kh := NotValidSuite.Point().Pick(random.New())
-			//	//
-			//	//kgb, _ := kg.MarshalBinary()
-			//	//khb, _ := kh.MarshalBinary()
-			//	//c := sha256.Sum256(append(kgb, khb...))
-			//	//// Convert hash to a scalar
-			//	//cScalar := NotValidSuite.Scalar().SetBytes(c[:32])
-			//	//return cScalar
-			//}()
+			cScalar := GenerateChallenge()
 
-			cScalar := suite.Scalar().SetBytes([]byte("intentional mismatch"))
+			// GenerateChallenge fake challenge
+			// Generate fake values of x or k based on unrelated or invalid data
+			fakeX := suite.Scalar().SetInt64(1)
+			//fakeK := suite.Scalar().SetInt64(1)
 
-			r := SolveChallenge(cScalar, x, k)
+			r := SolveChallenge(cScalar, fakeX, k)
 
 			if valid := Verify(cScalar, r, g, h, xg, xh, kg, kh); valid {
 				t.Fatalf("test should fail")
@@ -192,15 +179,17 @@ func TestEllipticFailVerifyCurveFlow(t *testing.T) {
 
 			kg, kh, k := ProverCommitment(g, h)
 
-			cScalar := GenerateChallenge(kg, kh)
+			cScalar := GenerateChallenge()
 
 			r := SolveChallenge(cScalar, x, k)
 
-			// Verification step
-			// params to fail the test
-			//r = cScalar // fails the test
-			cScalar = r // fails the test
+			// change params to fail verification step
+			zz := sha256.Sum256([]byte("intentional mismatch"))
+			cScalar = suite.Scalar().SetBytes(zz[:32]) // fails the test #1
+			//r = cScalar // fails the test #2
+			//cScalar = r // fails the test #3
 
+			// Verification step
 			// Compute rG and rH
 			rG := suite.Point().Mul(r, g)
 			rH := suite.Point().Mul(r, h)
@@ -214,10 +203,6 @@ func TestEllipticFailVerifyCurveFlow(t *testing.T) {
 			if kg.Equal(a) && kh.Equal(b) {
 				t.Fatalf("test should fail")
 			}
-			//return kG.Equal(a) && kH.Equal(b)
-			//if valid := Verify(cScalar, r, g, h, xg, xh, kg, kh); !valid {
-			//	t.Fatalf("unable to verify")
-			//}
 		})
 	}
 }
