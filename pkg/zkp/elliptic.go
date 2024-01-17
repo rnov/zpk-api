@@ -35,19 +35,7 @@ func GeneratePublicCommitments(secret *big.Int) (g kyber.Point, h kyber.Point, x
 	return g, h, xG, xH, x
 }
 
-// ProverCommitment takes a point `x` and returns the commitment to the Chaum-Pedersen proof
-// It randomly chooses a scalar `k`, computes `kG` and `kH`, and returns them along with `k`
-//
-// Example usage:
-//
-//	x := suite.Point().SetBytes([]byte{...})
-//	kG, kH, k := ProverCommitment(x)
-//	// kG, kH, and k now contain the commitment values
-//	// for the Chaum-Pedersen proof
-//
-// Note: The variables `suite` and `rng` are assumed to be globally defined and initialized.
-// `suite` is a constant representing the cryptographic suite.
-// `rng` is a random number generator used to pick the scalar `k`.
+// ProverCommitment generates a Chaum-Pedersen proof commitment given two points g and h
 func ProverCommitment(g, h kyber.Point) (kyber.Point, kyber.Point, kyber.Scalar) {
 	// Begin Chaum-Pedersen proof
 	// Randomly pick a scalar k
@@ -59,35 +47,19 @@ func ProverCommitment(g, h kyber.Point) (kyber.Point, kyber.Point, kyber.Scalar)
 	return kG, kH, k
 }
 
-// GenerateChallenge generates a challenge scalar based on two given points kg and kh.
-// It first marshals kg and kh into byte slices, then concatenates them.
-// Next, it computes the SHA256 hash of the concatenated byte slice.
-// Finally, it converts the hash into a scalar using the suite's scalar function.
-// The resulting scalar is returned.
-func GenerateChallenge(kg, kh kyber.Point) kyber.Scalar {
-	kGb, _ := kg.MarshalBinary()
-	kHb, _ := kh.MarshalBinary()
-	// Create a challenge c by hashing kG and kH
-	c := sha256.Sum256(append(kGb, kHb...))
-	// Convert hash to a scalar
-	cScalar := suite.Scalar().SetBytes(c[:32])
-
-	return cScalar
+// GenerateChallenge generates a random scalar to act as a challenge
+func GenerateChallenge() kyber.Scalar {
+	// Randomly pick a scalar to act as a challenge
+	return suite.Scalar().Pick(rng) //cScalar
 }
 
-// SolveChallenge computes the response 'r' by subtracting 'cx' from 'k'.
-// It takes three kyber.Scalar parameters 'cScalar', 'x', and 'k'.
-// The value of 'cScalar' is multiplied by 'x' and then subtracted from 'k' to
-// produce the final response 'r'.
+// SolveChallenge computes the response to a challenge in an elliptic curve cryptographic system.
+// It takes three parameters:
+//   - cScalar: the scalar value representing the challenge c
+//   - x: the scalar value representing x
+//   - k: the scalar value representing the prover's commitment k
 //
-// Example:
-//
-//	cScalar := suite.Scalar().SetInt64(10)
-//	x := suite.Scalar().SetInt64(5)
-//	k := suite.Scalar().SetInt64(50)
-//	response := SolveChallenge(cScalar, x, k)
-//
-// The response value will be 0, as 50 - (10 * 5) equals 0.
+// It computes the response r as r = k - cx and returns it as a scalar value.
 func SolveChallenge(cScalar, x, k kyber.Scalar) kyber.Scalar {
 	// Compute the response r = k - cx
 	r := suite.Scalar()
@@ -98,7 +70,6 @@ func SolveChallenge(cScalar, x, k kyber.Scalar) kyber.Scalar {
 
 // Verify performs a verification step and returns a boolean value indicating whether the verification is successful or not.
 func Verify(cScalar, r kyber.Scalar, g, h, xG, xH, kG, kH kyber.Point) bool {
-	// Verification step
 	// Compute rG and rH
 	rG := suite.Point().Mul(r, g)
 	rH := suite.Point().Mul(r, h)
@@ -112,6 +83,8 @@ func Verify(cScalar, r kyber.Scalar, g, h, xG, xH, kG, kH kyber.Point) bool {
 	return kG.Equal(a) && kH.Equal(b)
 }
 
+// oneStepEllipticCurveCP performs one step semi-interactive (way of generating challenge) a Chaum-Pedersen proof using
+// elliptic curve cryptography.
 func oneStepEllipticCurveCP(secret *big.Int) bool {
 	var rng = random.New()
 
@@ -139,14 +112,10 @@ func oneStepEllipticCurveCP(secret *big.Int) bool {
 	kG := suite.Point().Mul(k, G)
 	kH := suite.Point().Mul(k, H)
 
-	kGb, _ := kG.MarshalBinary()
-	kHb, _ := kH.MarshalBinary()
-	//Create a challenge c by hashing kG and kH
-	c := sha256.Sum256(append(kGb, kHb...))
-	// Convert hash to a scalar
-	cScalar := suite.Scalar().SetBytes(c[:32])
+	// Alice sends challenge - Randomly pick a scalar to act as a challenge
+	cScalar := suite.Scalar().Pick(rng)
 
-	// Compute the response r = k - cx
+	// Bob computes response - Compute the response r = k - cx
 	r := suite.Scalar()
 	r.Mul(x, cScalar).Sub(k, r)
 
